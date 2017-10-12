@@ -73,10 +73,11 @@ class Cube:
 
     # Define rotation angles and axes for the six sides of the cube
     x, y, z = np.eye(3)
-    rots = [Quaternion.from_v_theta(x, theta)
-            for theta in (np.pi / 2, -np.pi / 2)]
+
+    rots = [Quaternion.from_v_theta(x, theta) for x, theta in ((x, np.pi / 2), (x, -np.pi / 2))]
+
     rots += [Quaternion.from_v_theta(y, theta)
-             for theta in (np.pi / 2, -np.pi / 2, np.pi, 2 * np.pi)]
+             for y, theta in ((y, np.pi / 2), (y, -np.pi / 2), (y, np.pi), (y, 2 * np.pi))]
 
     # define face movements
     facesdict = dict(F=z, B=-z,
@@ -400,13 +401,15 @@ class InteractiveCube(plt.Axes):
         moves = []
         for j in range(10):
             cube_np = cube2np(cube)
-            cube_np = np.reshape(cube_np,(1,18,3,1))
-            move = possible_moves[np.argmax(model.predict(cube_np))]
+            cube_np = np.reshape(cube_np,(1,54))
+            p = model.predict(cube_np)[0]
+            # move = possible_moves[np.argmax(p)]
+            move = possible_moves[np.random.choice(len(p), size=1, p=p)[0]]
             moves.append(move)
             cube(move)
 
             if cube == cube_solved:
-
+                print(j)
                 break
 
         for j in moves:
@@ -533,17 +536,26 @@ class InteractiveCube(plt.Axes):
 
 
 def generate_game(max_moves = 6):
-
+    
     # generate a single game with max number of permutations number_moves
-
+    
     mycube = pc.Cube()
 
     global possible_moves
     formula = []
+    cube_original = cube2np(mycube)
     number_moves = max_moves#randint(3,max_moves)
-    for j in range(number_moves):
-        formula.append(possible_moves[randint(0,len(possible_moves)-1)])
 
+    action = randint(0,len(possible_moves)-1)
+    for j in range(number_moves):
+        formula.append(possible_moves[action])
+        new_action = randint(0,len(possible_moves)-4)
+        delta = action % 3
+        action_face = action - delta
+        if new_action >= action_face:
+            new_action += 3
+        action = new_action
+        
     #my_formula = pc.Formula("R U R' U' D' R' F R2 U' D D R' U' R U R' D' F'")
 
     my_formula = pc.Formula(formula)
@@ -551,15 +563,15 @@ def generate_game(max_moves = 6):
 
     mycube = mycube((my_formula))
     # use this instead if you want it in OG data type
-    scramble_instructions = my_formula.copy()
-    cube_scrambled = mycube.copy()
 
+    cube_scrambled = mycube
+    
     solution = my_formula.reverse()
 
     #print(mycube)
 
 
-    return cube_scrambled,formula,solution
+    return cube_scrambled, formula, solution
 
 def cube2np(mycube):
     # transform cube object to np array
@@ -588,7 +600,7 @@ if __name__ == '__main__':
     faces = ['L','U','R','D','F','B'] # for pycuber
     colors = ['[r]','[y]','[o]','[w]','[g]','[b]'] #for pycuber
 
-    max_moves  = 6
+    max_moves  = 10
 
     model = load_model('rubiks_model.h5')
 
